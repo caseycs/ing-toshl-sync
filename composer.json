@@ -1,0 +1,15 @@
+{
+    "require": {
+        "symfony/dom-crawler": "^3.1",
+        "nesbot/carbon": "^1.21",
+        "guzzlehttp/guzzle": "^6.2",
+        "illuminate/support": "^5.3",
+        "monolog/monolog": "^1.22",
+        "vlucas/phpdotenv": "^2.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "Ing2Toshl\\": "src/"
+        }
+    }
+}
