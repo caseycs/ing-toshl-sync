@@ -22,7 +22,7 @@ TOSHL_ACCOUNT_NAME="accound you want to sync"
 You also need content of the page with your transactions.
 You can always copy outer html from any webpage inspector.
 
-Automatd way to get it is to have scraping browser extension,
+Automated way to get it is to have scraping browser extension,
 but of course no one will use it for your bank account pages, unless you
 haven't wrote it on your own. So I guess you already made it.
 
