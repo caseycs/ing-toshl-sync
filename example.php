@@ -21,7 +21,7 @@ $logHandler = new StreamHandler('php://output', Logger::INFO);
             (new Logger('toshl'))->pushHandler($logHandler)
         ),
         getenv('TOSHL_ACCOUNT_NAME'),
-        (new IngPageParser((new Logger('ing.parser'))->pushHandler($logHandler)))
+        (new IngPageParser((new Logger('ing'))->pushHandler($logHandler)))
             ->extractTransactions(file_get_contents('ingTransactionsPageSample.html')),
         (new Logger('processor'))->pushHandler($logHandler)
     );
