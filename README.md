@@ -16,7 +16,7 @@ Create `.env` file like this:
 
 ```
 TOSHL_TOKEN=token
-TOSHL_ACCOUNT_NAME="accound you want to sync"
+TOSHL_ACCOUNT_NAME="account name you want to sync"
 ```
 
 You also need content of the page with your transactions.
