@@ -19,12 +19,7 @@ TOSHL_TOKEN=token
 TOSHL_ACCOUNT_NAME="account name you want to sync"
 ```
 
-You also need content of the page with your transactions.
-You can always copy outer html from any webpage inspector.
-
-Automated way to get it is to have scraping browser extension,
-but of course no one will use it for your bank account pages, unless you
-haven't wrote it on your own. So I guess you already made it.
+You also need content of the page with your transactions, easiest way is to copy outer html the firefox/chrome inspector.
 
 Put page content in the file `ingTransactionsPageSample.html`.
 
