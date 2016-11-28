@@ -9,11 +9,13 @@ use Psr\Log\LoggerInterface;
 class ToshlClient
 {
     public $client;
+    public $readOnly;
     public $log;
 
-    public function __construct($token, LoggerInterface $log)
+    public function __construct($token, $readOnly, LoggerInterface $log)
     {
         $this->token = $token;
+        $this->readOnly = $readOnly;
         $this->log = $log;
 
         $this->client = new Client(
@@ -22,7 +24,7 @@ class ToshlClient
                 'base_uri' => 'https://api.toshl.com',
                 'auth' => [$token, ''],
                 // You can set any number of default request options.
-                'timeout' => 2.0,
+                'timeout' => 5.0,
             ]
         );
     }
@@ -62,39 +64,37 @@ class ToshlClient
 
     /**
      * @param Carbon $date
-     * @param string $firstLinesHash
-     * @param string $commentStartHash
+     * @param string $extraKey
+     * @param string $extraValue
      * @return Collection|IngTransaction[]
      */
-    public function findTransactions(Carbon $date, $firstLinesHash, $commentStartHash)
+    public function findTransactions(Carbon $date, $extraKey, $extraValue)
     {
-        $toshlTransactions = $this->getTransactionsForDate($date);
+        return $this->getTransactionsForDate($date)->filter(
+            function (array $toshlTransaction) use ($extraKey, $extraValue) {
+                $this->log->debug(
+                    'Trying to match',
+                    [
+                        'key' => $extraKey,
+                        'value' => $extraValue,
+                        'extra' => empty($toshlTransaction['extra']) ? [] : $toshlTransaction['extra']
+                    ]
+                );
 
-        return $toshlTransactions->filter(
-            function (array $toshlTransaction) use ($firstLinesHash, $commentStartHash) {
-                $this->log->info('Trying to match', ['transaction' => $toshlTransaction]);
-
-                if (!empty($toshlTransaction['extra']['firstLinesHash'])
-                    && $firstLinesHash === $toshlTransaction['extra']['firstLinesHash']
-                ) {
-                    $this->log->info('firstLinesHash match');
-                    return true;
+                if (!isset($toshlTransaction['extra'][$extraKey])) {
+                    return false;
                 }
 
-                if (!empty($toshlTransaction['extra']['commentStartHash'])
-                    && $commentStartHash === $toshlTransaction['extra']['commentStartHash']
-                ) {
-                    $this->log->info('commentStartHash match');
-                    return true;
+                if ($extraValue !== $toshlTransaction['extra'][$extraKey]) {
+                    return false;
                 }
 
-                $this->log->info('No match');
-                return false;
+                return true;
             }
         );
     }
 
-    public function addTransaction($accountId, Carbon $date, $amount, $comment, $firstLinesHash, $commentStartHash)
+    public function addTransaction($accountId, Carbon $date, $amount, $comment, array $hashes)
     {
         $json = [
             'amount' => $amount,
@@ -102,9 +102,31 @@ class ToshlClient
             'date' => $date->format('Y-m-d'),
             'account' => $accountId,
             'desc' => $comment,
-            'extra' => ['firstLinesHash' => $firstLinesHash, 'commentStartHash' => $commentStartHash],
+            'extra' => $hashes,
         ];
-        $this->client->request('POST', "/entries", ['json' => $json]);
-        $this->log->info('Transaction created successfully', $json);
+
+        if ($this->readOnly) {
+            $this->log->info('Read-only mode, skipping creation', $json);
+        } else {
+            $this->client->request('POST', "/entries", ['json' => $json]);
+            $this->log->info('Transaction created successfully', $json);
+        }
+    }
+
+    public function updateTransactionHashes(array $transaction, array $hashes)
+    {
+        $json = $transaction;
+
+        $extra = empty($json['extra']) ? [] : $json['extra'];
+        $json['extra'] = array_merge($extra, $hashes);
+
+        $this->log->debug('Updating transaction', $json);
+
+        if ($this->readOnly) {
+            $this->log->info('Read-only mode, skipping update');
+        } else {
+            $this->client->request('PUT', "/entries/" . $transaction['id'], ['json' => $json]);
+            $this->log->debug('Transaction updated successfully');
+        }
     }
 }

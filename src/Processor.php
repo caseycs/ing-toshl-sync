@@ -2,54 +2,113 @@
 namespace Ing2Toshl;
 
 use Illuminate\Support\Collection;
+use Ing2Toshl\TransactionHasher\TransactionHasherInterface;
 use Psr\Log\LoggerInterface;
 
 class Processor
 {
-    public function addMissingTransactionToToshl(
+    /**
+     * @var TransactionHasherInterface[]|Collection
+     */
+    private $ingTransactionHashers;
+
+    public function __construct(
         ToshlClient $toshlClient,
-        $toshAccountName,
-        Collection $ingTransactions,
+        Collection $ingTransactionHashers,
         LoggerInterface $log
     ) {
-        $accountId = $toshlClient->findAccountId($toshAccountName);
+        $this->toshlClient = $toshlClient;
+        $this->ingTransactionHashers = $ingTransactionHashers;
+        $this->log = $log;
+    }
+
+    /**
+     * @param Collection $ingTransactions
+     * @throws \Exception
+     */
+    public function addMissingTransactionToToshl($toshAccountName, Collection $ingTransactions)
+    {
+        $accountId = $this->toshlClient->findAccountId($toshAccountName);
         $transactionsCreated = 0;
+        $transactionsUpdated = 0;
 
         /** @var IngTransaction[] $ingTransactions */
         foreach ($ingTransactions as $ingTransaction) {
-            $log->info('Trying to match', get_object_vars($ingTransaction));
+            $this->log->info('Trying to match', get_object_vars($ingTransaction));
 
-            $toshTransactions = $toshlClient->findTransactions(
+            $toshTransaction = $this->findTransaction($ingTransaction);
+            $hashes = $this->calculateActualHashes($ingTransaction);
+
+            if ($toshTransaction) {
+                $toshTransactionExtra = isset($toshTransaction['extra']) ? $toshTransaction['extra'] : [];
+
+                if ($toshTransactionExtra != $hashes) {
+                    $this->log->debug(
+                        'Hashes update required',
+                        ['found' => $toshTransactionExtra, 'calculated' => $hashes]
+                    );
+                    $this->toshlClient->updateTransactionHashes($toshTransaction, $hashes);
+                    $transactionsUpdated++;
+                } else {
+                    $this->log->debug('Hashes update not required');
+                }
+            } else {
+                $this->toshlClient->addTransaction(
+                    $accountId,
+                    $ingTransaction->date,
+                    $ingTransaction->amount,
+                    $ingTransaction->comment,
+                    $hashes
+                );
+            }
+        }
+
+        $this->log->info(
+            'All transactions synced',
+            ['transactionsCreated' => $transactionsCreated, 'transactionsUpdated' => $transactionsUpdated]
+        );
+    }
+
+    private function findTransaction(IngTransaction $ingTransaction)
+    {
+        foreach ($this->ingTransactionHashers as $ingTransactionHasher) {
+            $toshTransactions = $this->toshlClient->findTransactions(
                 $ingTransaction->date,
-                $ingTransaction->firstLinesHash(),
-                $ingTransaction->commentStartHash()
+                $ingTransactionHasher->name(),
+                $ingTransactionHasher->hash($ingTransaction)
+            );
+
+            $this->log->debug(
+                'Hasher match result',
+                ['hasher' => $ingTransactionHasher->name(), 'found' => $toshTransactions->count()]
             );
 
             if ($toshTransactions->count() > 1) {
-                $log->critical(
+                $this->log->critical(
                     'Multiple matching transactions found, skipping',
-                    get_object_vars($ingTransaction)
+                    [
+                        'hasher' => $ingTransactionHasher->name(), 'transaction' => get_object_vars($ingTransaction)
+                    ]
                 );
                 continue;
             } elseif ($toshTransactions->count() === 1) {
-                $log->info('transaction already exists', get_object_vars($ingTransaction));
-                continue;
+                $this->log->info('transaction found', $toshTransactions->first());
+                return $toshTransactions->first();
             }
-
-            $toshlClient->addTransaction(
-                $accountId,
-                $ingTransaction->date,
-                $ingTransaction->amount,
-                $ingTransaction->comment,
-                $ingTransaction->firstLinesHash(),
-                $ingTransaction->commentStartHash()
-            );
-
-            $transactionsCreated ++;
         }
+        return null;
+    }
 
-        $log->info('All transactions synced', ['transactionsCreated' => $transactionsCreated]);
-
-        return $accountId;
+    private function calculateActualHashes(IngTransaction $ingTransaction)
+    {
+        return $this->ingTransactionHashers->reduce(
+            function (&$data, TransactionHasherInterface $hasher) use ($ingTransaction) {
+                if (!$hasher->isLegacy()) {
+                    $data[$hasher->name()] = $hasher->hash($ingTransaction);
+                }
+                return $data;
+            },
+            []
+        );
     }
 }

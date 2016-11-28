@@ -14,8 +14,9 @@ class ToshlClientCached extends ToshlClient
     {
         $key = $date->format('Y-m-d');
         if (empty($this->cachePerDay[$key])) {
-            $this->log->info('Transactions from cache for', ['date' => $date->format('Y-m-d')]);
             $this->cachePerDay[$key] = parent::getTransactionsForDate($date);
+        } else {
+            $this->log->info('Transactions from cache for', ['date' => $date->format('Y-m-d')]);
         }
         return $this->cachePerDay[$key];
     }
