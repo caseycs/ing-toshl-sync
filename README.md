@@ -27,7 +27,7 @@ Run `php example.php`.
 
 Enjoy!
 
-## The way of Jedi
+## The way of true Jedi
 
 Please notice, that raw HTTP scraper for ING pages is really hard to implement becuase of ajax, Angular, complicated login flow etc. Also that will mean having your password somewhere else. So you either go for the browser emulation or (way simpler and faster) you make a Chrome extension.
 
