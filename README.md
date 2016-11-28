@@ -2,11 +2,11 @@
 Scrape your ING transactions from the website and push them into Toshl
 
 Toshl https://toshl.com is an awesome personal finance tool, however it's soooo boring to add
-all your incomes/expences manually...
+all your incomes/expences manually.
 
 So here is some automation for it.
 
-Unfortunately it requires quite a lot of tricks around to make it work really smooth, read below.
+Unfortunately it requires quite a lot of tricks around to make it work really smooth, however half-manual solution if quite simple.
 
 ## Howto
 
@@ -19,7 +19,7 @@ TOSHL_TOKEN=token
 TOSHL_ACCOUNT_NAME="account name you want to sync"
 ```
 
-You also need content of the page with your transactions, easiest way is to copy outer html the firefox/chrome inspector.
+You also need content of the page with your transactions, easiest way is to copy `<body>` outer html with the Firefox/Chrome page inspector.
 
 Put page content in the file `ingTransactionsPageSample.html`.
 
@@ -27,12 +27,14 @@ Run `php example.php`.
 
 Enjoy!
 
-## Jedi path
+## The way of Jedi
 
-Please notice, that raw HTTP scraper for ING pages is really hard to do becuase of ajax, angular, quite complicated login flow etc. Also also that will mean having your password somewhere else. So you either go for PhantomJS emulation OR (way simpler and faster) just make a Chrome extension.
+Please notice, that raw HTTP scraper for ING pages is really hard to implement becuase of ajax, Angular, complicated login flow etc. Also that will mean having your password somewhere else. So you either go for the browser emulation or (way simpler and faster) you make a Chrome extension.
 
-Let's assume you have your own scraping browser extension, which can send content of any page to your private server when you activate it.
+Let's assume you have your own scraping browser extension, which can send content of any page to your private server.
 
-On your private server you have let's say Jenkins, and the request from extension is triggering some job. For the ING pages it might be resolved into Tosh syncing script, very similar to `example.php`. 
+On your private server you have for example Jenkins, and the request from extension is triggering some job which is leading to running Tosh syncing script (based on `example.php`) against page content. 
 
-So you just go to your private banking, open last transactions, click on the extension icon - and that's it! If you go really hardcore, you can even receive notification in your private (home, family) Slack team with all the stats :)
+So you just go to your private banking, login with your favourite&secure password manager, open last transactions page, activate your extension - and that's it!
+
+If you will go really hardcore, you can even receive notification in your private (or home, or family) Slack team with all the stats :)
